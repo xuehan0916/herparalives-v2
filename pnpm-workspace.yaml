@@ -1,0 +1,7 @@
+packages:
+  - "."
+
+# Lockfile must install on both the Windows dev machine and Linux CI/Vercel.
+supportedArchitectures:
+  os: [current, win32]
+  cpu: [current, x64]
