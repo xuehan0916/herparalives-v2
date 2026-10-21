@@ -4,6 +4,8 @@
 
 ## 开发
 
+当前已有可交互开发样篇；完成范围和未接入功能见 [开发说明](docs/DEVELOPMENT.md)。样篇尚未内容审校，不用于正式上线。
+
 ```bash
 pnpm install
 pnpm dev        # http://localhost:3000
