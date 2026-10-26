@@ -1,19 +1,16 @@
 "use client";
-import { useState } from "react";
-import { sampleStory as story } from "@/content/stories/sample";
+import { useEffect, useRef, useState } from "react";
+import { sampleStory } from "@/content/stories/sample";
+import { storyCatalog } from "@/content/stories/catalog";
+import GameMenu from "./game-menu";
+import StoryHall from "./story-hall";
 import { DIMENSIONS, DIMENSION_INFO as info } from "@/lib/dimensions";
-import type { StoryOption } from "@/lib/story-schema";
+import type { Story, StoryOption } from "@/lib/story-schema";
 import { chooseEnding, earnedFragments, journeyState } from "@/lib/journey";
+import { resolveGameScreen, type GameScreen } from "@/lib/game-navigation";
 
-type View =
-  | "home"
-  | "situation"
-  | "read"
-  | "chapter"
-  | "ending"
-  | "collection"
-  | "personal";
-function Radar({ choices }: { choices: StoryOption[] }) {
+type View = GameScreen;
+function Radar({ choices, name }: { choices: StoryOption[]; name: string }) {
   const state = journeyState(choices);
   const point = (i: number, r: number) =>
     `${110 + Math.sin((i * Math.PI * 2) / 5) * r},${110 - Math.cos((i * Math.PI * 2) / 5) * r}`;
@@ -22,7 +19,7 @@ function Radar({ choices }: { choices: StoryOption[] }) {
       viewBox="0 0 220 220"
       className="radar"
       role="img"
-      aria-label="林遥的五维处境示意，无数字评分"
+      aria-label={name + "的五维处境示意，无数字评分"}
     >
       {[35, 60, 85].map((r) => (
         <polygon
@@ -64,19 +61,49 @@ export default function Experience() {
   const [choices, setChoices] = useState<StoryOption[]>([]);
   const [feedback, setFeedback] = useState<StoryOption | null>(null);
   const [font, setFont] = useState(18);
-  const [flipped, setFlipped] = useState(false);
+  const [story, setStory] = useState<Story>(sampleStory);
   const [saved, setSaved] = useState("");
-  const ci = Math.min(4, Math.floor(choices.length / 3));
+  const totalChoices = story.chapters.reduce(
+    (sum, c) => sum + c.forks.length,
+    0,
+  );
+  const ci = Math.min(
+    story.chapters.length - 1,
+    Math.floor(choices.length / 3),
+  );
   const fork = story.chapters[ci].forks[choices.length % 3];
   const chapter =
     story.chapters[Math.max(0, Math.ceil(choices.length / 3) - 1)];
   const fragments = earnedFragments(choices);
   const flags = new Set(choices.flatMap((c) => c.sets));
+  const choiceCount = useRef(choices.length);
+  choiceCount.current = choices.length;
+  const totalCount = useRef(totalChoices);
+  totalCount.current = totalChoices;
+  useEffect(() => {
+    const syncScreen = () => {
+      const screen = window.location.hash.slice(1);
+      setView(
+        resolveGameScreen(screen, choiceCount.current, totalCount.current),
+      );
+      window.scrollTo(0, 0);
+    };
+    syncScreen();
+    window.addEventListener("popstate", syncScreen);
+    window.addEventListener("hashchange", syncScreen);
+    return () => {
+      window.removeEventListener("popstate", syncScreen);
+      window.removeEventListener("hashchange", syncScreen);
+    };
+  }, []);
   const go = (v: View) => {
+    if (window.location.hash !== "#" + v)
+      window.history.pushState(null, "", "#" + v);
     setView(v);
     window.scrollTo(0, 0);
   };
-  const start = () => {
+  const start = (selected: Story = story) => {
+    setStory(selected);
     setChoices([]);
     setFeedback(null);
     setSaved("");
@@ -94,6 +121,7 @@ export default function Experience() {
       localStorage.setItem(
         "herparalives-v2-sample",
         JSON.stringify({
+          storyId: story.id,
           choices: choices.map((c) => c.id),
           completedAt: new Date().toISOString(),
         }),
@@ -106,167 +134,114 @@ export default function Experience() {
   const restore = () => {
     try {
       const raw = localStorage.getItem("herparalives-v2-sample");
-      if (!raw) { setSaved("这台设备还没有保存记录"); return; }
+      if (!raw) {
+        setSaved("这台设备还没有保存记录");
+        return;
+      }
       const record = JSON.parse(raw);
-      if (!Array.isArray(record.choices) || record.choices.length > 15) throw new Error();
-      const forks = story.chapters.flatMap(c => c.forks);
-      const restored: StoryOption[] = record.choices.map((id: unknown, i: number) => {
-        const option = forks[i].options.find(o => o.id === id);
-        if (!option) throw new Error();
-        return option;
-      });
-      setChoices(restored); setFeedback(null); setSaved("已读取本地记录");
-      go(restored.length === 15 ? "ending" : restored.length > 0 && restored.length % 3 === 0 ? "chapter" : restored.length === 0 ? "situation" : "read");
-    } catch { setSaved("本地记录无法读取，请重新体验"); }
+      if (!Array.isArray(record.choices) || record.choices.length > 15)
+        throw new Error();
+      const savedStory = storyCatalog.find(
+        (e) => e.story.id === (record.storyId ?? sampleStory.id),
+      )?.story;
+      if (!savedStory) throw new Error();
+      const forks = savedStory.chapters.flatMap((c) => c.forks);
+      const restored: StoryOption[] = record.choices.map(
+        (id: unknown, i: number) => {
+          const option = forks[i].options.find((o) => o.id === id);
+          if (!option) throw new Error();
+          return option;
+        },
+      );
+      setStory(savedStory);
+      setChoices(restored);
+      setFeedback(null);
+      setSaved("已读取本地记录");
+      go(
+        restored.length === 15
+          ? "ending"
+          : restored.length > 0 && restored.length % 3 === 0
+            ? "chapter"
+            : restored.length === 0
+              ? "situation"
+              : "read",
+      );
+    } catch {
+      setSaved("本地记录无法读取，请重新体验");
+    }
   };
   return (
     <main className="museum">
-      <nav className="topbar">
-        <button className="brand" onClick={() => go("home")}>
-          HerParaLives<small>她的平行人生</small>
-        </button>
-        <div>
-          <button onClick={() => go("home")}>故事馆</button>
-          <button onClick={() => go("collection")}>我的图鉴</button>
-          <button onClick={() => go("personal")}>我的平行人生 ↗</button>
-        </div>
-        <span className="tag">本地预览 · 开发样篇</span>
-      </nav>
-      {view === "home" && (
-        <>
-          <section className="hero">
-            <div>
-              <p className="eyebrow">A MUSEUM OF POSSIBLE LIVES</p>
-              <h1>
-                人生不止一种
-                <br />
-                她，<em>也可以是你。</em>
-              </h1>
-              <p className="lead">
-                走进她们的人生，在岔路口停一停。
-                <br />
-                看见每一种选择的获得、代价，和自己的心意。
-              </p>
-              <button className="primary" onClick={start}>
-                翻开一段人生 ↗
-              </button>
-              <p className="hero-note">
-                不替你选择人生，陪你把每种人生多走一段。
-              </p>
-            </div>
-            <div className="hero-art" aria-hidden="true">
-              <div className="orbit" />
-              <div className="arch">
-                <div className="sun" />
-                <div className="hill back" />
-                <div className="hill" />
-                <div className="path" />
-              </div>
-              <span className="star">✦</span>
-              <span className="art-note">
-                另一种可能，
-                <br />
-                从这里开始。
-              </span>
-            </div>
-          </section>
-          <section className="gallery">
-            <p className="eyebrow">THEIR LIVES, YOUR CHOICES</p>
-            <div className="section-title">
-              <h2>她们的人生</h2>
-              <p>没有标准答案，只有不同的风景。</p>
-            </div>
-            <div className="story-grid">
-              <article className="story-card">
-                <button
-                  className="cover"
-                  onClick={() => setFlipped(!flipped)}
-                  aria-label="翻看故事卡"
-                >
-                  <small>01 / 创作与生活</small>
-                  {flipped ? (
-                    <div className="card-back">
-                      <h3>{story.card.question}</h3>
-                      <p>
-                        约 15 分钟 · 情绪强度：轻
-                        <br />
-                        原创虚构 · AI 辅助开发样篇
-                      </p>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="window-art">✦</div>
-                      <div className="cover-title">
-                        <small>林遥 · 32 岁</small>
-                        <h3>
-                          给自己，
-                          <br />
-                          留一扇窗
-                        </h3>
-                      </div>
-                    </>
-                  )}
-                  <span className="flip-hint">↻ 翻看故事</span>
-                </button>
-                <div className="card-bottom">
-                  <p>在生活的缝隙里，找回自己的创作。</p>
-                  <button onClick={start}>走进她的人生 →</button>
-                </div>
-              </article>
-              <article className="coming-card">
-                <span>✳</span>
-                <p className="eyebrow">MORE LIVES TO COME</p>
-                <h3>
-                  还有很多种她，
-                  <br />
-                  正在走来。
-                </h3>
-                <p>
-                  新的故事将在制作与审校后，
-                  <br />
-                  陆续进入故事馆。
-                </p>
-                <small className="tag">故事筹备中</small>
-              </article>
-              <aside className="invitation">
-                <p className="eyebrow">A LETTER TO YOU</p>
-                <h3>
-                  有些答案，
-                  <br />
-                  在别人的故事里
-                  <br />
-                  慢慢变清晰。
-                </h3>
-                <p>
-                  你可以只是来读一个好故事。
-                  <br />
-                  也可以带着还没想好的问题，
-                  <br />
-                  借她的人生，多走一小段。
-                </p>
-                <p>愿你在这里，听见自己。 ✧</p>
-              </aside>
-            </div>
-          </section>
-          <section className="personal-banner">
-            <span>✦</span>
-            <div>
-              <p className="eyebrow">YOUR PARALLEL LIFE</p>
-              <h2>下一段故事，来自你的生活。</h2>
-              <p>收集五种人生碎片，开启「我的平行人生」。</p>
-            </div>
-            <button className="secondary" onClick={() => go("personal")}>
-              了解我的平行人生 ↗
-            </button>
-          </section>
-        </>
+      {view !== "home" && (
+        <header className="game-hud">
+          <button
+            className="game-back"
+            onClick={() =>
+              go(
+                view === "hall" || view === "personal" || view === "collection"
+                  ? "home"
+                  : "hall",
+              )
+            }
+          >
+            ←{" "}
+            {view === "hall" || view === "personal" || view === "collection"
+              ? "主界面"
+              : "故事馆"}
+          </button>
+          <span className="game-location">
+            {view === "hall"
+              ? "她们的平行人生 / 故事馆"
+              : view === "collection"
+                ? "我的人生图鉴"
+                : view === "personal"
+                  ? "我的平行人生"
+                  : story.card.tagline}
+          </span>
+          <button
+            className="game-inventory"
+            onClick={() => go(view === "collection" ? "hall" : "collection")}
+          >
+            ✦ {view === "collection" ? "故事馆" : "图鉴 · " + fragments.length}
+          </button>
+        </header>
       )}
+      {view === "home" && (
+        <GameMenu
+          onEnter={() => go("hall")}
+          onPersonal={() => go("personal")}
+          onCollection={() => go("collection")}
+          onContinue={
+            choices.length
+              ? () =>
+                  go(
+                    choices.length === totalChoices
+                      ? "ending"
+                      : choices.length % 3 === 0
+                        ? "chapter"
+                        : "read",
+                  )
+              : undefined
+          }
+        />
+      )}
+      {view === "hall" && <StoryHall onStart={start} />}
       {view === "situation" && (
         <section className="reader">
           <p className="eyebrow">BEFORE THE STORY BEGINS</p>
-          <h1>先认识一下，林遥。</h1>
+          <h1>先认识一下，{story.card.name}。</h1>
           <p className="notice">
-            原创虚构开发样篇 · AI 辅助起草 · 尚未内容审校
+            {story.status === "placeholder"
+              ? "原创虚构开发样篇 · AI 辅助起草 · 尚未内容审校"
+              : story.inspiredBy
+                ? "灵感来自 " +
+                  story.inspiredBy.person +
+                  " · " +
+                  story.inspiredBy.note
+                : "原创虚构人物"}
+            {story.aiAssisted && story.status !== "placeholder"
+              ? " · AI 辅助创作"
+              : ""}
           </p>
           <p className="prose">{story.situation.who}</p>
           <h3>她想要什么</h3>
@@ -294,7 +269,8 @@ export default function Experience() {
         <section className="reader">
           <div className="reader-meta">
             <span>
-              第 {ci + 1} 章 / 共 5 章 · 岔路 {(choices.length % 3) + 1} / 3
+              第 {ci + 1} 章 / 共 {story.chapters.length} 章 · 岔路{" "}
+              {(choices.length % 3) + 1} / 3
             </span>
             <div>
               <button
@@ -312,7 +288,7 @@ export default function Experience() {
             </div>
           </div>
           <div className="progress">
-            <i style={{ width: `${(choices.length / 15) * 100}%` }} />
+            <i style={{ width: `${(choices.length / totalChoices) * 100}%` }} />
           </div>
           <h1>{story.chapters[ci].title}</h1>
           {fork.echoes
@@ -360,9 +336,9 @@ export default function Experience() {
         <section className="reader">
           <p className="eyebrow">A MOMENT TO LOOK BACK</p>
           <h1>{chapter.title} · 章末回望</h1>
-          <Radar choices={choices} />
+          <Radar choices={choices} name={story.card.name} />
           <p className="muted center small">
-            五维描述林遥的处境，不是你的分数。
+            五维描述{story.card.name}的处境，不是你的分数。
           </p>
           <div className="coach">
             <span>✧ 一点回望</span>
@@ -376,9 +352,12 @@ export default function Experience() {
           </p>
           <button
             className="primary"
-            onClick={() => go(choices.length === 15 ? "ending" : "read")}
+            onClick={() =>
+              go(choices.length === totalChoices ? "ending" : "read")
+            }
           >
-            {choices.length === 15 ? "走向结局与回望" : "翻开下一章"} →
+            {choices.length === totalChoices ? "走向结局与回望" : "翻开下一章"}{" "}
+            →
           </button>
         </section>
       )}
@@ -387,7 +366,7 @@ export default function Experience() {
           <p className="eyebrow">AN ENDING, AND A BEGINNING</p>
           <h1>{chooseEnding(story, choices).title}</h1>
           <p className="prose">{chooseEnding(story, choices).text}</p>
-          <Radar choices={choices} />
+          <Radar choices={choices} name={story.card.name} />
           <h3>这一路，你替她做过的选择</h3>
           <ol className="choice-history">
             {choices.map((c, i) => (
@@ -407,7 +386,7 @@ export default function Experience() {
             <button className="primary" onClick={() => go("collection")}>
               看看收集的碎片 →
             </button>
-            <button className="secondary" onClick={start}>
+            <button className="secondary" onClick={() => start()}>
               再走一次岔路
             </button>
           </div>
@@ -429,7 +408,9 @@ export default function Experience() {
           </div>
           <div className="coach">
             <h3>
-              {choices.length === 15 ? "已走完 · 给自己，留一扇窗" : "还在路上"}
+              {choices.length === totalChoices
+                ? "已走完 · " + story.card.tagline
+                : "还在路上"}
             </h3>
             <p>
               完成章节后，这里会出现你的碎片。正式账户与跨设备同步尚未接入，开发样篇不发放正式权益。
@@ -439,8 +420,10 @@ export default function Experience() {
             <button className="primary" onClick={save}>
               保存本地体验记录
             </button>
-            <button className="secondary" onClick={restore}>读取本地记录</button>
-            <button className="secondary" onClick={start}>
+            <button className="secondary" onClick={restore}>
+              读取本地记录
+            </button>
+            <button className="secondary" onClick={() => start()}>
               重新体验
             </button>
           </div>
@@ -467,22 +450,14 @@ export default function Experience() {
               正式版五种碎片各一枚可兑换一次体验；每完成四条故事提供一次保底解锁。开发样篇不发放正式权益。
             </p>
           </div>
-          <button className="primary" onClick={() => go("home")}>
-            先去她们的人生看看 →
+          <button className="primary" onClick={() => go("hall")}>
+            去故事馆，体验她的人生 →
           </button>
         </section>
       )}
-      <footer>
-        <span>
-          HerParaLives <small>她的平行人生</small>
-        </span>
-        <p>
-          人物和未来都是虚构的，不预测现实人生。
-          <br />
-          在她们的人生岔路里，看见自己会如何选择。
-        </p>
-        <small>本地开发预览 · 2026</small>
-      </footer>
+      {view !== "home" && (
+        <p className="game-endnote">人物与未来均为虚构 · 不替你选择人生</p>
+      )}
     </main>
   );
 }

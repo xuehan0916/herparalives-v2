@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import "./museum.css";
+import "./game.css";
 
 export const metadata: Metadata = {
   title: "HerParaLives 她的平行人生",
