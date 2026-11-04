@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { storyCatalog } from "@/content/stories/catalog";
 import {
   drawStory,
@@ -12,56 +12,69 @@ function StoryCard({
   entry,
   drawn,
   onStart,
+  index,
 }: {
   entry: CatalogEntry;
   drawn: boolean;
   onStart: (story: Story) => void;
+  index: number;
 }) {
   const [flipped, setFlipped] = useState(false);
   const { story, categories } = entry;
   return (
     <article
-      className={`story-card hall-card${drawn ? " drawn-card" : ""}`}
+      className={[
+        "story-card hall-card relic-card",
+        drawn ? "drawn-card" : "",
+      ].join(" ")}
       aria-label={story.card.tagline}
     >
       {drawn && (
         <p className="drawn-label" role="status">
-          ✧ 为你抽到的这一段人生
+          ✧ 这一次，她与你相遇
         </p>
       )}
       <button
-        className="cover"
-        onClick={() => setFlipped(!flipped)}
-        aria-label={`${flipped ? "翻回" : "翻看"}${story.card.name}的故事卡`}
+        className={["cover relic-cover", flipped ? "is-flipped" : ""].join(" ")}
+        aria-label={(flipped ? "翻回" : "翻看") + story.card.name + "的故事卡"}
         aria-pressed={flipped}
+        onClick={() => setFlipped(!flipped)}
       >
-        <small>{story.card.theme}</small>
-        {flipped ? (
-          <div className="card-back">
-            <h3>{story.card.question}</h3>
-            <p>
-              约 {story.card.minutes} 分钟 · 情绪强度：{story.card.intensity}
-            </p>
-            <p>
-              {story.inspiredBy
-                ? `灵感人物：${story.inspiredBy.person}`
-                : "原创虚构人物"}
-            </p>
-            {story.inspiredBy && <small>{story.inspiredBy.note}</small>}
-          </div>
-        ) : (
-          <>
-            <div className="window-art" aria-hidden="true">
-              ✦
-            </div>
+        <div className="relic-inner">
+          <div className="relic-front" aria-hidden={flipped}>
+            <span className="relic-corner top-left" />
+            <span className="relic-corner top-right" />
+            <span className="relic-serial">
+              LIFE / {(index + 1).toString().padStart(2, "0")}
+            </span>
+            <div className="portrait-halo" />
+            <div className="sprite-portrait" />
+            <div className="portrait-floor" />
+            <span className="relic-theme">{story.card.theme}</span>
             <div className="cover-title">
               <small>{story.card.name}</small>
               <h3>{story.card.tagline}</h3>
             </div>
-          </>
-        )}
+            <span className="relic-star">✧</span>
+          </div>
+          <div className="relic-back" aria-hidden={!flipped}>
+            <span className="relic-star">✧</span>
+            <small>她将如何选择？</small>
+            <h3>{story.card.question}</h3>
+            <p>{story.card.theme}</p>
+            <p>
+              约 {story.card.minutes} 分钟 · 情绪强度 {story.card.intensity}
+            </p>
+            <p>
+              {story.inspiredBy
+                ? "灵感人物：" + story.inspiredBy.person
+                : "原创虚构人物"}
+            </p>
+            {story.inspiredBy && <small>{story.inspiredBy.note}</small>}
+          </div>
+        </div>
         <span className="flip-hint">
-          {flipped ? "↶ 翻回人物" : "↻ 翻看议题与时长"}
+          {flipped ? "↶ 翻回人物" : "轻触，翻开她的处境"}
         </span>
       </button>
       <div className="card-bottom">
@@ -72,20 +85,19 @@ function StoryCard({
             </span>
           ))}
         </div>
-        <p>{story.card.question}</p>
+        <button className="card-play" onClick={() => onStart(story)}>
+          体验这一段人生 <span>→</span>
+        </button>
         <div className="story-card-meta">
           <small>
             {story.status === "placeholder"
-              ? "开发样篇 · AI 辅助 · 未审校"
+              ? "体验样篇 · AI 辅助 · 未审校"
               : story.aiAssisted
                 ? "AI 辅助创作"
                 : "策展故事"}
           </small>
           <span>约 {story.card.minutes} 分钟</span>
         </div>
-        <button className="card-play" onClick={() => onStart(story)}>
-          体验这一段人生 <span aria-hidden="true">→</span>
-        </button>
       </div>
     </article>
   );
@@ -93,158 +105,162 @@ function StoryCard({
 
 export default function StoryHall({
   onStart,
+  onRequestDraw,
 }: {
   onStart: (story: Story) => void;
+  onRequestDraw: (action: () => void) => void;
 }) {
   const [category, setCategory] = useState("all");
   const [query, setQuery] = useState("");
   const [kind, setKind] = useState<"all" | Story["kind"]>("all");
   const [drawnId, setDrawnId] = useState<string>();
+  const deck = useRef<HTMLDivElement>(null);
   const selectedCategory = STORY_CATEGORIES.find((c) => c.id === category);
   const visible = filterCatalog(storyCatalog, { category, query, kind });
-  const draw = () => {
-    const entry = drawStory(visible);
-    if (entry) setDrawnId(entry.story.id);
-  };
   const reset = () => {
     setCategory("all");
     setQuery("");
     setKind("all");
     setDrawnId(undefined);
   };
+  const draw = () =>
+    onRequestDraw(() => {
+      const entry = drawStory(visible);
+      if (entry) {
+        setDrawnId(entry.story.id);
+        deck.current?.scrollIntoView({
+          behavior: window.matchMedia("(prefers-reduced-motion: reduce)")
+            .matches
+            ? "auto"
+            : "smooth",
+          block: "center",
+        });
+      }
+    });
   return (
     <section className="story-hall" aria-label="故事馆">
       <header className="hall-heading">
-        <p className="eyebrow">她们的平行人生</p>
+        <p className="eyebrow">THE HALL OF OTHER LIVES</p>
         <h1>故事馆</h1>
-        <p>先选一种处境，再走进一个她的人生。</p>
+        <p>
+          有些岔路，你还没走过。
+          <br />
+          有些心意，等一个她来唤醒。
+        </p>
       </header>
-      <div className="hall-layout">
-        <aside className="hall-categories" aria-label="按处境分类">
-          <p className="category-heading">她正在经历什么？</p>
+      <div className="hall-categories" aria-label="按处境分类">
+        <button
+          aria-pressed={category === "all"}
+          className={category === "all" ? "selected" : ""}
+          onClick={() => {
+            setCategory("all");
+            setDrawnId(undefined);
+          }}
+        >
+          全部人生
+        </button>
+        {STORY_CATEGORIES.map((c) => (
           <button
-            className={category === "all" ? "selected" : ""}
-            aria-pressed={category === "all"}
+            key={c.id}
+            aria-pressed={category === c.id}
+            className={category === c.id ? "selected" : ""}
             onClick={() => {
-              setCategory("all");
+              setCategory(c.id);
               setDrawnId(undefined);
             }}
           >
-            <span>全部人生</span>
-            <small>{storyCatalog.length}</small>
+            {c.label}
           </button>
-          {STORY_CATEGORIES.map((c) => (
+        ))}
+      </div>
+      <div className="category-intro">
+        <p>{selectedCategory?.description ?? "此刻的你，想靠近哪一种人生？"}</p>
+      </div>
+      <div className="hall-tools">
+        <label className="story-search">
+          <span aria-hidden="true">⌕</span>
+          <input
+            type="search"
+            aria-label="搜索故事、人物或处境"
+            placeholder="寻找一个她，或一种处境"
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setDrawnId(undefined);
+            }}
+          />
+        </label>
+        <div className="source-filters" aria-label="故事来源">
+          {(
+            [
+              { id: "all", label: "全部人物" },
+              { id: "inspired", label: "人物启发" },
+              { id: "ordinary", label: "原创女性" },
+            ] as const
+          ).map((k) => (
             <button
-              key={c.id}
-              className={category === c.id ? "selected" : ""}
-              aria-pressed={category === c.id}
+              key={k.id}
+              aria-pressed={kind === k.id}
+              className={kind === k.id ? "selected" : ""}
               onClick={() => {
-                setCategory(c.id);
+                setKind(k.id);
                 setDrawnId(undefined);
               }}
             >
-              <span>{c.label}</span>
-              <small>
-                {filterCatalog(storyCatalog, { category: c.id }).length}
-              </small>
+              {k.label}
             </button>
           ))}
-        </aside>
-        <div className="hall-main">
-          <div className="category-intro">
-            <h2>{selectedCategory?.label ?? "每一种处境，都有不同的走法。"}</h2>
-            <p>
-              {selectedCategory?.description ??
-                "可以从熟悉的处境开始，也可以去看看从未想过的生活。"}
-            </p>
-          </div>
-          <div className="hall-tools">
-            <label className="story-search">
-              <span aria-hidden="true">⌕</span>
-              <input
-                type="search"
-                aria-label="搜索故事、人物或处境"
-                placeholder="寻找故事、人物或处境"
-                value={query}
-                onChange={(e) => {
-                  setQuery(e.target.value);
-                  setDrawnId(undefined);
-                }}
-              />
-            </label>
-            <label className="story-kind">
-              <span className="sr-only">故事来源</span>
-              <select
-                value={kind}
-                onChange={(e) => {
-                  setKind(e.target.value as typeof kind);
-                  setDrawnId(undefined);
-                }}
-              >
-                <option value="all">所有人物</option>
-                <option value="inspired">人物启发</option>
-                <option value="ordinary">原创女性</option>
-              </select>
-            </label>
-          </div>
-          <div className="hall-draw">
-            <div>
-              <span aria-hidden="true">✧</span>
-              <p>
-                还没想好从谁开始？<small>让一段人生，先与你相遇。</small>
-              </p>
-            </div>
-            <button
-              className="secondary"
-              disabled={visible.length === 0}
-              onClick={draw}
-            >
-              替我抽一张
-            </button>
-          </div>
-          <p className="hall-result-count" role="status">
-            {visible.length
-              ? `${visible.length} 段可体验的人生`
-              : "暂时没有符合条件的故事"}
-            {query.trim() && ` · 搜索「${query.trim()}」`}
-          </p>
-          {visible.length ? (
-            <div className="hall-deck">
-              {[...visible]
-                .sort(
-                  (a, b) =>
-                    Number(b.story.id === drawnId) -
-                    Number(a.story.id === drawnId),
-                )
-                .map((entry) => (
-                  <StoryCard
-                    key={entry.story.id}
-                    entry={entry}
-                    drawn={entry.story.id === drawnId}
-                    onStart={onStart}
-                  />
-                ))}
-            </div>
-          ) : (
-            <div className="hall-empty">
-              <span aria-hidden="true">✧</span>
-              <h3>
-                {query || kind !== "all"
-                  ? "换个线索，再找找看。"
-                  : "这一类人生，正在慢慢写成。"}
-              </h3>
-              <p>
-                {query || kind !== "all"
-                  ? "试试其他人物、处境，或放宽筛选条件。"
-                  : "故事完成制作与审校后，会出现在这里。先去看看其他处境中的她。"}
-              </p>
-              <button className="secondary" onClick={reset}>
-                看看全部人生
-              </button>
-            </div>
-          )}
         </div>
       </div>
+      <div className="hall-deck" ref={deck}>
+        {visible.length ? (
+          [...visible]
+            .sort(
+              (a, b) =>
+                Number(b.story.id === drawnId) - Number(a.story.id === drawnId),
+            )
+            .map((entry, i) => (
+              <StoryCard
+                key={entry.story.id}
+                entry={entry}
+                drawn={entry.story.id === drawnId}
+                onStart={onStart}
+                index={i}
+              />
+            ))
+        ) : (
+          <div className="hall-empty">
+            <span aria-hidden="true">✧</span>
+            <h3>
+              {query || kind !== "all"
+                ? "换个线索，寻找另一个她。"
+                : "这一种人生，还在慢慢写成。"}
+            </h3>
+            <p>也许，另一个岔路口已有故事在等你。</p>
+            <button className="secondary" onClick={reset}>
+              看看全部人生
+            </button>
+          </div>
+        )}
+      </div>
+      <div className="hall-draw">
+        <span aria-hidden="true" className="draw-sigil">
+          ✧
+        </span>
+        <div>
+          <p>不如，让一段人生先遇见你。</p>
+          <small>从当前故事中，抽一张与你相遇的卡。</small>
+        </div>
+        <button className="secondary" disabled={!visible.length} onClick={draw}>
+          替我抽一张 <span aria-hidden="true">↗</span>
+        </button>
+      </div>
+      <p className="hall-result-count" role="status">
+        {visible.length
+          ? visible.length + " 段人生，静候翻开"
+          : "这里暂时没有故事"}
+        {query.trim() ? " · " + query.trim() : ""}
+      </p>
     </section>
   );
 }

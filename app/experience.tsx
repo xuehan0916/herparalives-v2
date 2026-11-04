@@ -4,6 +4,17 @@ import { sampleStory } from "@/content/stories/sample";
 import { storyCatalog } from "@/content/stories/catalog";
 import GameMenu from "./game-menu";
 import StoryHall from "./story-hall";
+import VortexScene from "./vortex-scene";
+import MySpace from "./my-space";
+import LoginOverlay from "./login-overlay";
+import type { AuthStatus } from "@/lib/auth-contract";
+import {
+  LIBRARY_KEY,
+  parseLibrary,
+  restoreJourney,
+  upsertJourney,
+  type JourneyRecord,
+} from "@/lib/local-library";
 import { DIMENSIONS, DIMENSION_INFO as info } from "@/lib/dimensions";
 import type { Story, StoryOption } from "@/lib/story-schema";
 import { chooseEnding, earnedFragments, journeyState } from "@/lib/journey";
@@ -63,6 +74,47 @@ export default function Experience() {
   const [font, setFont] = useState(18);
   const [story, setStory] = useState<Story>(sampleStory);
   const [saved, setSaved] = useState("");
+  const [library, setLibrary] = useState<JourneyRecord[]>([]);
+  const [auth, setAuth] = useState<AuthStatus>({ configured: false });
+  const [login, setLogin] = useState<"draw" | "account" | null>(null);
+  const [motionPaused, setMotionPaused] = useState(false);
+  const pendingDraw = useRef<(() => void) | null>(null);
+  const guestDrawAllowed = useRef(false);
+  const runId = useRef<string | null>(null);
+  useEffect(() => {
+    setLogin(null);
+    pendingDraw.current = null;
+  }, [view]);
+  useEffect(() => {
+    try {
+      let records = parseLibrary(localStorage.getItem(LIBRARY_KEY));
+      if (!records.length) {
+        const raw = localStorage.getItem("herparalives-v2-sample");
+        if (raw) {
+          const legacy = JSON.parse(raw);
+          records = parseLibrary(
+            JSON.stringify([
+              {
+                id: "legacy-record",
+                storyId: legacy.storyId ?? sampleStory.id,
+                choiceIds: legacy.choices,
+                updatedAt: legacy.completedAt,
+              },
+            ]),
+          );
+        }
+      }
+      setLibrary(records);
+    } catch {
+      /* 存储不可用时仍允许游玩。 */
+    }
+    const controller = new AbortController();
+    fetch("/api/auth/status", { signal: controller.signal })
+      .then((r) => (r.ok ? r.json() : { configured: false }))
+      .then(setAuth)
+      .catch(() => {});
+    return () => controller.abort();
+  }, []);
   const totalChoices = story.chapters.reduce(
     (sum, c) => sum + c.forks.length,
     0,
@@ -102,7 +154,79 @@ export default function Experience() {
     setView(v);
     window.scrollTo(0, 0);
   };
+  const persistJourney = (updated: StoryOption[]) => {
+    if (!runId.current) runId.current = crypto.randomUUID();
+    const record: JourneyRecord = {
+      id: runId.current,
+      storyId: story.id,
+      choiceIds: updated.map((o) => o.id),
+      updatedAt: new Date().toISOString(),
+    };
+    const records = upsertJourney(library, record);
+    setLibrary(records);
+    try {
+      localStorage.setItem(LIBRARY_KEY, JSON.stringify(records));
+    } catch {
+      setSaved("这台设备暂时无法保存记录，请保持当前页面打开。");
+    }
+  };
+  const resumeRecord = (record: JourneyRecord) => {
+    const restored = restoreJourney(
+      record,
+      storyCatalog.map((e) => e.story),
+    );
+    if (!restored) return;
+    setStory(restored.story);
+    setChoices(restored.choices);
+    setFeedback(null);
+    runId.current = record.id;
+    const count = restored.choices.length;
+    go(
+      count === restored.story.chapters.flatMap((c) => c.forks).length
+        ? "ending"
+        : count > 0 && count % 3 === 0
+          ? "chapter"
+          : count === 0
+            ? "situation"
+            : "read",
+    );
+  };
+  const requestDraw = (action: () => void) => {
+    if (auth.userLabel || guestDrawAllowed.current) {
+      action();
+      return;
+    }
+    pendingDraw.current = action;
+    setLogin("draw");
+  };
+  const closeLogin = () => {
+    setLogin(null);
+    pendingDraw.current = null;
+  };
+  const continueGuest = () => {
+    guestDrawAllowed.current = true;
+    setLogin(null);
+    const action = pendingDraw.current;
+    pendingDraw.current = null;
+    action?.();
+  };
+  const signedIn = (label: string) => {
+    setAuth({ ...auth, userLabel: label });
+    setLogin(null);
+    const action = pendingDraw.current;
+    pendingDraw.current = null;
+    action?.();
+  };
+  const logout = async () => {
+    try {
+      const response = await fetch("/api/auth/logout", { method: "POST" });
+      if (response.ok) setAuth({ configured: auth.configured });
+    } catch {
+      setSaved("暂时无法退出登录，请稍后再试。");
+    }
+  };
   const start = (selected: Story = story) => {
+    runId.current = crypto.randomUUID();
     setStory(selected);
     setChoices([]);
     setFeedback(null);
@@ -112,105 +236,85 @@ export default function Experience() {
   const next = () => {
     if (!feedback) return;
     const updated = [...choices, feedback];
+    persistJourney(updated);
     setChoices(updated);
     setFeedback(null);
     go(updated.length % 3 === 0 ? "chapter" : "read");
   };
-  const save = () => {
-    try {
-      localStorage.setItem(
-        "herparalives-v2-sample",
-        JSON.stringify({
-          storyId: story.id,
-          choices: choices.map((c) => c.id),
-          completedAt: new Date().toISOString(),
-        }),
-      );
-      setSaved("已保存在这台设备");
-    } catch {
-      setSaved("浏览器无法保存，请检查存储设置");
-    }
-  };
-  const restore = () => {
-    try {
-      const raw = localStorage.getItem("herparalives-v2-sample");
-      if (!raw) {
-        setSaved("这台设备还没有保存记录");
-        return;
-      }
-      const record = JSON.parse(raw);
-      if (!Array.isArray(record.choices) || record.choices.length > 15)
-        throw new Error();
-      const savedStory = storyCatalog.find(
-        (e) => e.story.id === (record.storyId ?? sampleStory.id),
-      )?.story;
-      if (!savedStory) throw new Error();
-      const forks = savedStory.chapters.flatMap((c) => c.forks);
-      const restored: StoryOption[] = record.choices.map(
-        (id: unknown, i: number) => {
-          const option = forks[i].options.find((o) => o.id === id);
-          if (!option) throw new Error();
-          return option;
-        },
-      );
-      setStory(savedStory);
-      setChoices(restored);
-      setFeedback(null);
-      setSaved("已读取本地记录");
-      go(
-        restored.length === 15
-          ? "ending"
-          : restored.length > 0 && restored.length % 3 === 0
-            ? "chapter"
-            : restored.length === 0
-              ? "situation"
-              : "read",
-      );
-    } catch {
-      setSaved("本地记录无法读取，请重新体验");
-    }
-  };
   return (
-    <main className="museum">
-      {view !== "home" && (
-        <header className="game-hud">
-          <button
-            className="game-back"
-            onClick={() =>
-              go(
-                view === "hall" || view === "personal" || view === "collection"
-                  ? "home"
-                  : "hall",
-              )
-            }
-          >
-            ←{" "}
-            {view === "hall" || view === "personal" || view === "collection"
-              ? "主界面"
-              : "故事馆"}
+    <main
+      className={
+        "museum immersive screen-" +
+        view +
+        (motionPaused ? " motion-paused" : "")
+      }
+    >
+      <VortexScene active={view === "home"} paused={motionPaused} />
+      <header className={"game-hud" + (view === "home" ? " home-hud" : "")}>
+        {view === "home" ? (
+          <button className="game-wordmark" onClick={() => go("home")}>
+            H
+            <span>
+              HERPARALIVES<small>她的平行人生</small>
+            </span>
           </button>
-          <span className="game-location">
-            {view === "hall"
-              ? "她们的平行人生 / 故事馆"
-              : view === "collection"
-                ? "我的人生图鉴"
-                : view === "personal"
-                  ? "我的平行人生"
-                  : story.card.tagline}
-          </span>
+        ) : (
+          <>
+            <button
+              className="game-back"
+              onClick={() =>
+                go(
+                  view === "hall" ||
+                    view === "personal" ||
+                    view === "collection"
+                    ? "home"
+                    : "hall",
+                )
+              }
+            >
+              ←{" "}
+              {view === "hall" || view === "personal" || view === "collection"
+                ? "主界面"
+                : "故事馆"}
+            </button>
+            <span className="game-location">
+              {view === "hall"
+                ? "她们的平行人生 / 故事馆"
+                : view === "collection"
+                  ? "我的 · 人生收藏"
+                  : view === "personal"
+                    ? "我的平行人生"
+                    : story.card.tagline}
+            </span>
+          </>
+        )}
+        <div className="hud-tools">
           <button
-            className="game-inventory"
-            onClick={() => go(view === "collection" ? "hall" : "collection")}
+            className="motion-toggle"
+            aria-label={motionPaused ? "开启动效" : "暂停动效"}
+            aria-pressed={motionPaused}
+            onClick={() => setMotionPaused(!motionPaused)}
           >
-            ✦ {view === "collection" ? "故事馆" : "图鉴 · " + fragments.length}
+            {motionPaused ? "▷" : "Ⅱ"}
+            <span>动效</span>
           </button>
-        </header>
-      )}
+          <button
+            className="my-entry"
+            onClick={() => go("collection")}
+            aria-label="我的"
+          >
+            <span className="my-avatar" aria-hidden="true">
+              ✧
+            </span>
+            <span>我的</span>
+            {auth.userLabel && <i className="signed-in-dot" />}
+          </button>
+        </div>
+      </header>
       {view === "home" && (
         <GameMenu
           onEnter={() => go("hall")}
           onPersonal={() => go("personal")}
-          onCollection={() => go("collection")}
           onContinue={
             choices.length
               ? () =>
@@ -221,11 +325,15 @@ export default function Experience() {
                         ? "chapter"
                         : "read",
                   )
-              : undefined
+              : library[0]
+                ? () => resumeRecord(library[0])
+                : undefined
           }
         />
       )}
-      {view === "hall" && <StoryHall onStart={start} />}
+      {view === "hall" && (
+        <StoryHall onStart={start} onRequestDraw={requestDraw} />
+      )}
       {view === "situation" && (
         <section className="reader">
           <p className="eyebrow">BEFORE THE STORY BEGINS</p>
@@ -393,42 +501,14 @@ export default function Experience() {
         </section>
       )}
       {view === "collection" && (
-        <section className="reader">
-          <p className="eyebrow">PIECES OF A LIFE</p>
-          <h1>我的人生图鉴</h1>
-          <p className="muted">每一种选择，都留下了一点回响。</p>
-          <div className="fragment-grid">
-            {DIMENSIONS.map((d) => (
-              <div key={d} style={{ color: info[d].color }}>
-                <span>✦</span>
-                <strong>{info[d].label}</strong>
-                <small>{fragments.filter((f) => f === d).length} 枚</small>
-              </div>
-            ))}
-          </div>
-          <div className="coach">
-            <h3>
-              {choices.length === totalChoices
-                ? "已走完 · " + story.card.tagline
-                : "还在路上"}
-            </h3>
-            <p>
-              完成章节后，这里会出现你的碎片。正式账户与跨设备同步尚未接入，开发样篇不发放正式权益。
-            </p>
-          </div>
-          <div className="actions">
-            <button className="primary" onClick={save}>
-              保存本地体验记录
-            </button>
-            <button className="secondary" onClick={restore}>
-              读取本地记录
-            </button>
-            <button className="secondary" onClick={() => start()}>
-              重新体验
-            </button>
-          </div>
-          <p role="status">{saved}</p>
-        </section>
+        <MySpace
+          records={library}
+          userLabel={auth.userLabel}
+          onLogin={() => setLogin("account")}
+          onLogout={logout}
+          onResume={resumeRecord}
+          onExplore={() => go("hall")}
+        />
       )}
       {view === "personal" && (
         <section className="reader">
@@ -457,6 +537,20 @@ export default function Experience() {
       )}
       {view !== "home" && (
         <p className="game-endnote">人物与未来均为虚构 · 不替你选择人生</p>
+      )}
+      {saved && (
+        <p className="storage-status" role="status">
+          {saved}
+        </p>
+      )}
+      {login && (
+        <LoginOverlay
+          reason={login}
+          auth={auth}
+          onClose={closeLogin}
+          onGuest={continueGuest}
+          onSuccess={signedIn}
+        />
       )}
     </main>
   );

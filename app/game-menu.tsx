@@ -1,37 +1,54 @@
+import { useEffect, useRef, useState } from "react";
+
 type Props = {
   onEnter: () => void;
   onPersonal: () => void;
-  onCollection: () => void;
   onContinue?: () => void;
 };
 
-export default function GameMenu({
-  onEnter,
-  onPersonal,
-  onCollection,
-  onContinue,
-}: Props) {
+export default function GameMenu({ onEnter, onPersonal, onContinue }: Props) {
+  const [entering, setEntering] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (timer.current) clearTimeout(timer.current);
+    },
+    [],
+  );
+  const enter = () => {
+    if (entering) return;
+    setEntering(true);
+    timer.current = setTimeout(
+      onEnter,
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 650,
+    );
+  };
   return (
-    <section className="game-menu" aria-label="游戏主界面">
-      <div className="menu-art" aria-hidden="true">
-        <div className="orbit" />
-        <div className="arch">
-          <div className="sun" />
-          <div className="hill back" />
-          <div className="hill" />
-          <div className="path" />
-        </div>
-        <span className="star">✦</span>
-      </div>
+    <section
+      className={"game-menu" + (entering ? " is-entering" : "")}
+      aria-label="游戏主界面"
+    >
       <div className="menu-content">
-        <p className="eyebrow">HERPARALIVES</p>
-        <h1>她的平行人生</h1>
+        <p className="eyebrow">
+          <span />
+          万千人生 · 一次相遇
+          <span />
+        </p>
+        <h1>
+          <small>她的</small>平行人生
+        </h1>
         <p className="menu-subtitle">
           在她们的人生岔路里，看见自己会如何选择。
         </p>
         <div className="menu-actions">
-          <button className="primary menu-start" onClick={onEnter}>
-            体验她的平行人生 <span aria-hidden="true">→</span>
+          <button
+            className="primary menu-start"
+            onClick={enter}
+            disabled={entering}
+          >
+            <i aria-hidden="true">✧</i>
+            <span>{entering ? "正在走近她…" : "体验她的平行人生"}</span>
+            <span aria-hidden="true">→</span>
           </button>
           {onContinue && (
             <button className="menu-resume" onClick={onContinue}>
@@ -47,9 +64,7 @@ export default function GameMenu({
           </span>
           <span aria-hidden="true">→</span>
         </button>
-        <button className="menu-collection" onClick={onCollection}>
-          ✦ 我的人生图鉴
-        </button>
+        <p className="menu-whisper">每个未曾选择的岔路，都有一个她在继续。</p>
       </div>
       <p className="menu-promise">
         不替你选择人生，陪你把每种人生多走一段。<span>人物与未来均为虚构</span>
