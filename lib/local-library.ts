@@ -1,13 +1,19 @@
 import { z } from "zod";
 import type { Story, StoryOption } from "./story-schema.ts";
-import { earnedFragments } from "./journey.ts";
+import {
+  earnedFragments,
+  findFork,
+  firstFork,
+  isJourneyFinished,
+  linearNext,
+} from "./journey.ts";
 import { DIMENSIONS, type Dimension } from "./dimensions.ts";
 
 export const LIBRARY_KEY = "herparalives-v2-library";
 const recordSchema = z.object({
   id: z.string().min(1).max(100),
   storyId: z.string().min(1).max(100),
-  choiceIds: z.array(z.string().max(100)).max(15),
+  choiceIds: z.array(z.string().max(100)).max(40),
   updatedAt: z.string().datetime(),
 });
 export type JourneyRecord = z.infer<typeof recordSchema>;
@@ -36,13 +42,15 @@ export function restoreJourney(
 ): { story: Story; choices: StoryOption[] } | undefined {
   const story = stories.find((s) => s.id === record.storyId);
   if (!story) return undefined;
-  const forks = story.chapters.flatMap((c) => c.forks);
-  if (record.choiceIds.length > forks.length) return undefined;
   const choices: StoryOption[] = [];
-  for (const [index, id] of record.choiceIds.entries()) {
-    const option = forks[index].options.find((o) => o.id === id);
+  // 按故事图逐屏还原：选项可能通过 next 跳到别的岔路，不能假设顺序线性。
+  let current = firstFork(story);
+  for (const id of record.choiceIds) {
+    if (!current) return undefined;
+    const option = current.fork.options.find((o) => o.id === id);
     if (!option) return undefined;
     choices.push(option);
+    current = option.next ? findFork(story, option.next) : linearNext(story, current);
   }
   return { story, choices };
 }
@@ -55,15 +63,13 @@ export function summarizeLibrary(records: JourneyRecord[], stories: Story[]) {
   const journeys = records.flatMap((record) => {
     const restored = restoreJourney(record, stories);
     if (!restored || restored.choices.length === 0) return [];
-    const dropped = earnedFragments(restored.choices);
+    const dropped = earnedFragments(restored.story, restored.choices);
     for (const d of dropped) fragments[d]++;
     return [
       {
         ...restored,
         record,
-        complete:
-          restored.choices.length ===
-          restored.story.chapters.flatMap((c) => c.forks).length,
+        complete: isJourneyFinished(restored.story, restored.choices),
       },
     ];
   });
