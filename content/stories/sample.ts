@@ -92,6 +92,7 @@ export const sampleStory = storySchema.parse({
   aiAssisted: true,
   card: {
     name: "林遥",
+    portrait: "/images/linyao-tarot-silhouette.png",
     tagline: "给自己，留一扇窗",
     theme: "创作与生活",
     minutes: 15,

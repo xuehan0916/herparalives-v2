@@ -7,6 +7,7 @@ import {
   type CatalogEntry,
 } from "@/lib/story-catalog";
 import type { Story } from "@/lib/story-schema";
+import TarotDraw from "./tarot-draw";
 
 function StoryCard({
   entry,
@@ -48,16 +49,62 @@ function StoryCard({
               LIFE / {(index + 1).toString().padStart(2, "0")}
             </span>
             <div className="portrait-halo" />
-            <div className="sprite-portrait" />
+            {story.card.portrait ? (
+              <div
+                className="story-specific-portrait"
+                style={{ backgroundImage: `url("${story.card.portrait}")` }}
+              />
+            ) : (
+              <svg
+                className="story-card-concept"
+                viewBox="0 0 160 200"
+                aria-hidden="true"
+              >
+                <path fill="#9fae8d15" stroke="#cbbc8a" d="M36 36h88v132H36z" />
+                <path
+                  fill="#cbbb8a22"
+                  stroke="#d7cca1"
+                  d="M36 36l47 17v132l-47-17z"
+                />
+                <path
+                  fill="none"
+                  stroke="#d7cca1"
+                  d="M44 52l30 11m-30 3l30 11m-30 3l30 11m-30 3l30 11M76 121v10M83 150l41-35"
+                />
+                <circle cx="107" cy="73" r="8" fill="#d7cca1" />
+                <path
+                  stroke="#b6c49b"
+                  fill="none"
+                  d="M90 100h25m-25 5h25m-25 5h25"
+                />
+              </svg>
+            )}
             <div className="portrait-floor" />
             <span className="relic-theme">{story.card.theme}</span>
             <div className="cover-title">
               <small>{story.card.name}</small>
+              {!story.card.portrait && (
+                <span className="story-character-pending">
+                  角色待建立 · 封面示意
+                </span>
+              )}
               <h3>{story.card.tagline}</h3>
             </div>
             <span className="relic-star">✧</span>
           </div>
-          <div className="relic-back" aria-hidden={!flipped}>
+          <div
+            className={
+              "relic-back" + (story.card.portrait ? " has-character" : "")
+            }
+            aria-hidden={!flipped}
+          >
+            {story.card.portrait && (
+              <div
+                className="character-card-back"
+                style={{ backgroundImage: `url("${story.card.portrait}")` }}
+                aria-hidden="true"
+              />
+            )}
             <span className="relic-star">✧</span>
             <small>她将如何选择？</small>
             <h3>{story.card.question}</h3>
@@ -114,7 +161,12 @@ export default function StoryHall({
   const [query, setQuery] = useState("");
   const [kind, setKind] = useState<"all" | Story["kind"]>("all");
   const [drawnId, setDrawnId] = useState<string>();
+  const [drawing, setDrawing] = useState<{
+    story: Story;
+    poolCount: number;
+  } | null>(null);
   const deck = useRef<HTMLDivElement>(null);
+  const drawTrigger = useRef<HTMLButtonElement>(null);
   const selectedCategory = STORY_CATEGORIES.find((c) => c.id === category);
   const visible = filterCatalog(storyCatalog, { category, query, kind });
   const reset = () => {
@@ -128,17 +180,34 @@ export default function StoryHall({
       const entry = drawStory(visible);
       if (entry) {
         setDrawnId(entry.story.id);
-        deck.current?.scrollIntoView({
-          behavior: window.matchMedia("(prefers-reduced-motion: reduce)")
-            .matches
-            ? "auto"
-            : "smooth",
-          block: "center",
-        });
+        setDrawing({ story: entry.story, poolCount: visible.length });
       }
     });
   return (
     <section className="story-hall" aria-label="故事馆">
+      {drawing && (
+        <TarotDraw
+          story={drawing.story}
+          poolCount={drawing.poolCount}
+          onClose={() => {
+            setDrawing(null);
+            requestAnimationFrame(() =>
+              drawTrigger.current?.focus({ preventScroll: true }),
+            );
+            deck.current?.scrollIntoView({
+              behavior: window.matchMedia("(prefers-reduced-motion: reduce)")
+                .matches
+                ? "auto"
+                : "smooth",
+              block: "center",
+            });
+          }}
+          onStart={(story) => {
+            setDrawing(null);
+            onStart(story);
+          }}
+        />
+      )}
       <header className="hall-heading">
         <p className="eyebrow">THE HALL OF OTHER LIVES</p>
         <h1>故事馆</h1>
@@ -251,7 +320,12 @@ export default function StoryHall({
           <p>不如，让一段人生先遇见你。</p>
           <small>从当前故事中，抽一张与你相遇的卡。</small>
         </div>
-        <button className="secondary" disabled={!visible.length} onClick={draw}>
+        <button
+          ref={drawTrigger}
+          className="secondary"
+          disabled={!visible.length}
+          onClick={draw}
+        >
           替我抽一张 <span aria-hidden="true">↗</span>
         </button>
       </div>

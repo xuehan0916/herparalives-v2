@@ -1,0 +1,79 @@
+/* Restore the original game atmosphere; refine the source of the ghostly effect. */
+.vortex-scene {
+  background: #1c2b29;
+}
+.vortex-painting {
+  opacity: 0.66;
+  animation: none;
+  filter: saturate(0.8) brightness(1.13);
+}
+.vortex-scene canvas {
+  opacity: 1;
+}
+.vortex-aura {
+  background: #d9ba7512;
+  filter: blur(70px);
+}
+.vortex-shade {
+  background:
+    radial-gradient(
+      ellipse at 50% 45%,
+      #172b278c 8%,
+      #172b2710 55%,
+      #15262238 100%
+    ),
+    linear-gradient(
+      0deg,
+      #132721c9,
+      transparent 28%,
+      transparent 76%,
+      #13272166
+    );
+}
+.film-grain {
+  opacity: 0.025;
+}
+.is-distant .vortex-painting {
+  opacity: 0.2;
+  filter: blur(4px) saturate(0.75);
+}
+.is-distant canvas {
+  opacity: 0.09;
+}
+.menu-content {
+  position: relative;
+}
+.menu-content h1 {
+  text-shadow: 0 3px 25px #142822;
+}
+.menu-start {
+  background: #142b27b8;
+}
+.menu-personal {
+  text-shadow: 0 1px 8px #10231d;
+}
+.story-card-concept {
+  position: absolute;
+  left: 50%;
+  top: 57px;
+  width: 160px;
+  height: 200px;
+  transform: translateX(-50%);
+}
+.story-specific-portrait {
+  position: absolute;
+  inset: 48px 20px 75px;
+  background: center bottom / contain no-repeat;
+}
+.story-character-pending {
+  display: block;
+  color: #aeb998;
+  font: 8px/1.8 sans-serif;
+  letter-spacing: 1px;
+  margin: 6px 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .vortex-painting {
+    animation: none;
+  }
+}
