@@ -17,7 +17,12 @@ import {
 } from "@/lib/local-library";
 import { DIMENSIONS, DIMENSION_INFO as info } from "@/lib/dimensions";
 import type { Story, StoryOption } from "@/lib/story-schema";
-import { chooseEnding, earnedFragments, journeyState } from "@/lib/journey";
+import {
+  chooseEnding,
+  earnedFragments,
+  journeyState,
+  traverse,
+} from "@/lib/journey";
 import { resolveGameScreen, type GameScreen } from "@/lib/game-navigation";
 
 type View = GameScreen;
@@ -119,24 +124,35 @@ export default function Experience() {
     (sum, c) => sum + c.forks.length,
     0,
   );
-  const ci = Math.min(
-    story.chapters.length - 1,
-    Math.floor(choices.length / 3),
-  );
-  const fork = story.chapters[ci].forks[choices.length % 3];
-  const chapter =
-    story.chapters[Math.max(0, Math.ceil(choices.length / 3) - 1)];
-  const fragments = earnedFragments(choices);
+  // 按故事图逐屏推进：选项可以用 next 跳支线或汇合，不能只看选择次数算位置。
+  const path = traverse(story, choices);
+  // 阅读页永远显示"当前所在"的章；章末页才显示刚走完的那一章。
+  const readerChapterIndex =
+    path.current?.chapterIndex ?? Math.max(0, story.chapters.length - 1);
+  const readerChapter = story.chapters[readerChapterIndex];
+  const forkIndex = path.current?.forkIndex ?? Math.max(0, readerChapter.forks.length - 1);
+  const fork = path.current?.fork ?? readerChapter.forks[forkIndex];
+  const chapter = path.chapterJustCompleted
+    ? story.chapters[path.completedChapterIndex ?? 0]
+    : readerChapter;
+  const fragments = earnedFragments(story, choices);
   const flags = new Set(choices.flatMap((c) => c.sets));
   const choiceCount = useRef(choices.length);
   choiceCount.current = choices.length;
   const totalCount = useRef(totalChoices);
   totalCount.current = totalChoices;
+  const boundariesRef = useRef(path.boundaries);
+  boundariesRef.current = path.boundaries;
   useEffect(() => {
     const syncScreen = () => {
       const screen = window.location.hash.slice(1);
       setView(
-        resolveGameScreen(screen, choiceCount.current, totalCount.current),
+        resolveGameScreen(
+          screen,
+          choiceCount.current,
+          totalCount.current,
+          boundariesRef.current,
+        ),
       );
       window.scrollTo(0, 0);
     };
@@ -180,14 +196,14 @@ export default function Experience() {
     setChoices(restored.choices);
     setFeedback(null);
     runId.current = record.id;
-    const count = restored.choices.length;
+    const restoredPath = traverse(restored.story, restored.choices);
     go(
-      count === restored.story.chapters.flatMap((c) => c.forks).length
-        ? "ending"
-        : count > 0 && count % 3 === 0
+      restored.choices.length === 0
+        ? "situation"
+        : restoredPath.chapterJustCompleted
           ? "chapter"
-          : count === 0
-            ? "situation"
+          : restoredPath.finished
+            ? "ending"
             : "read",
     );
   };
@@ -239,7 +255,8 @@ export default function Experience() {
     persistJourney(updated);
     setChoices(updated);
     setFeedback(null);
-    go(updated.length % 3 === 0 ? "chapter" : "read");
+    const after = traverse(story, updated);
+    go(after.chapterJustCompleted ? "chapter" : after.finished ? "ending" : "read");
   };
   return (
     <main
@@ -319,10 +336,10 @@ export default function Experience() {
             choices.length
               ? () =>
                   go(
-                    choices.length === totalChoices
-                      ? "ending"
-                      : choices.length % 3 === 0
-                        ? "chapter"
+                    path.chapterJustCompleted
+                      ? "chapter"
+                      : path.finished
+                        ? "ending"
                         : "read",
                   )
               : library[0]
@@ -377,8 +394,8 @@ export default function Experience() {
         <section className="reader">
           <div className="reader-meta">
             <span>
-              第 {ci + 1} 章 / 共 {story.chapters.length} 章 · 岔路{" "}
-              {(choices.length % 3) + 1} / 3
+              第 {readerChapterIndex + 1} 章 / 共 {story.chapters.length} 章 · 岔路{" "}
+              {forkIndex + 1}
             </span>
             <div>
               <button
@@ -396,9 +413,13 @@ export default function Experience() {
             </div>
           </div>
           <div className="progress">
-            <i style={{ width: `${(choices.length / totalChoices) * 100}%` }} />
+            <i
+              style={{
+                width: `${(path.boundaries.length / story.chapters.length) * 100}%`,
+              }}
+            />
           </div>
-          <h1>{story.chapters[ci].title}</h1>
+          <h1>{readerChapter.title}</h1>
           {fork.echoes
             .filter((e) => flags.has(e.ifFlag))
             .map((e) => (
@@ -461,10 +482,10 @@ export default function Experience() {
           <button
             className="primary"
             onClick={() =>
-              go(choices.length === totalChoices ? "ending" : "read")
+              go(path.finished ? "ending" : "read")
             }
           >
-            {choices.length === totalChoices ? "走向结局与回望" : "翻开下一章"}{" "}
+            {path.finished ? "走向结局与回望" : "翻开下一章"}{" "}
             →
           </button>
         </section>
