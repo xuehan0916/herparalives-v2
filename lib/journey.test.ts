@@ -108,3 +108,35 @@ test("benchmark story yields three fragments and a flag-driven ending", () => {
   ];
   assert.equal(chooseEnding(chenYingzhenStory, boundaryPath).id, "sustainable");
 });
+
+// ── 正式标杆故事《陈映真·她接住的那一半》：5 章 × 3 次选择 ──
+import { chenYingzhenHalfStory } from "../content/stories/chen-yingzhen-half.ts";
+
+test("published benchmark story has five chapters, fifteen choices and five endings", () => {
+  assert.equal(chenYingzhenHalfStory.status, "published");
+  assert.equal(chenYingzhenHalfStory.chapters.length, 5);
+  assert.equal(
+    chenYingzhenHalfStory.chapters.reduce((n, c) => n + c.forks.length, 0),
+    15,
+  );
+  for (const chapter of chenYingzhenHalfStory.chapters) {
+    assert.equal(chapter.forks.length, 3);
+    for (const fork of chapter.forks) assert.equal(fork.options.length, 3);
+  }
+  assert.ok(chenYingzhenHalfStory.endings.length >= 4);
+  assert.ok(chenYingzhenHalfStory.endings.some((e) => e.fallback));
+});
+
+test("first-option path finishes with fifteen fragments and a fallback-safe ending", () => {
+  const choices = chenYingzhenHalfStory.chapters.flatMap((c) =>
+    c.forks.map((f) => f.options[0]),
+  );
+  assert.equal(choices.length, 15);
+  const path = traverse(chenYingzhenHalfStory, choices);
+  assert.equal(path.finished, true);
+  assert.deepEqual(path.boundaries, [3, 6, 9, 12, 15]);
+  assert.equal(earnedFragments(chenYingzhenHalfStory, choices).length, 5);
+  // 第一章三选项的维度：判断清晰度 / 事业进展 / 关系支持 → 多数并列，取最后一次 → relationship
+  assert.equal(earnedFragments(chenYingzhenHalfStory, choices)[0], "relationship");
+  assert.equal(journeyState(choices).achievement > 0, true);
+});
