@@ -52,9 +52,10 @@ export const chenYingzhenHalfStory = storySchema.parse({
     question: "在有限的时间与资源里，她决定先救谁？",
   },
   person: {
-    ageRange: "二十多岁入行，三十五岁回望",
+    ageRange: "二十多岁至三十五岁",
     stage: "从实习到独立带项目",
     occupation: "妇产科医生",
+    state: "实习第三年，第一次独立接诊",
     relations: ["导师林大夫", "同科室的周大夫与赵医生", "反复来诊的女病人", "母亲与老同学"],
     fixedFacts: ["明德医院为虚构机构", "所有病例与对话均为虚构", "她的职业路径与真实人物无关"],
   },

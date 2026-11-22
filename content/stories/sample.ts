@@ -99,6 +99,11 @@ export const sampleStory = storySchema.parse({
     intensity: "轻",
     question: "当生活已经排满，自己的愿望该放在哪里？",
   },
+  person: {
+    ageRange: "32 岁",
+    occupation: "印刷厂排版员",
+    state: "收到第一次个展邀请，工作与创作开始抢时间",
+  },
   situation: {
     who: "32 岁，印刷厂排版员，曾经想成为版画创作者。",
     wants: "完成人生第一次小型作品展，也照顾好眼前的生活。",

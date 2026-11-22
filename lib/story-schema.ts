@@ -100,6 +100,8 @@ export const storySchema = z.object({
   person: z
     .object({
       ageRange: z.string().optional(),
+      // 人物卡片背面展示用：故事开始时她所处的状态（一句短语）。
+      state: z.string().max(40).optional(),
       stage: z.string().optional(),
       occupation: z.string().optional(),
       relations: z.array(z.string()).default([]),

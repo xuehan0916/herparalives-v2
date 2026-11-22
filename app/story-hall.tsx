@@ -106,18 +106,37 @@ function StoryCard({
               />
             )}
             <span className="relic-star">✧</span>
-            <small>她将如何选择？</small>
+            <dl className="relic-profile">
+              <div>
+                <dt>姓名</dt>
+                <dd>{story.card.name}</dd>
+              </div>
+              {story.person?.ageRange && (
+                <div>
+                  <dt>年龄</dt>
+                  <dd>{story.person.ageRange}</dd>
+                </div>
+              )}
+              {story.person?.occupation && (
+                <div>
+                  <dt>职业</dt>
+                  <dd>{story.person.occupation}</dd>
+                </div>
+              )}
+              {(story.person?.state || story.person?.stage) && (
+                <div>
+                  <dt>状态</dt>
+                  <dd>{story.person.state || story.person.stage}</dd>
+                </div>
+              )}
+            </dl>
             <h3>{story.card.question}</h3>
-            <p>{story.card.theme}</p>
-            <p>
+            <p className="relic-back-meta">
               约 {story.card.minutes} 分钟 · 情绪强度 {story.card.intensity}
             </p>
-            <p>
-              {story.inspiredBy
-                ? "灵感人物：" + story.inspiredBy.person
-                : "原创虚构人物"}
-            </p>
-            {story.inspiredBy && <small>{story.inspiredBy.note}</small>}
+            <small>
+              {story.inspiredBy ? "受真实人物启发 · 虚构改编" : "原创虚构人物"}
+            </small>
           </div>
         </div>
         <span className="flip-hint">

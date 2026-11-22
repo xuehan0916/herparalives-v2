@@ -1,0 +1,142 @@
+/* 人物卡背面的档案信息：姓名 / 年龄 / 职业 / 状态 */
+.relic-profile {
+  display: grid;
+  gap: 6px;
+  width: min(100%, 216px);
+  margin: 8px auto 14px;
+}
+.relic-profile > div {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 8px;
+  align-items: baseline;
+  text-align: left;
+}
+.relic-profile dt {
+  color: #8a7fa6;
+  font: 10px/1.6 var(--serif);
+  letter-spacing: 0.16em;
+}
+.relic-profile dd {
+  margin: 0;
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.relic-back-meta {
+  margin: 0 0 6px;
+  color: #7c7099;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+
+/* 有立绘的卡片：立绘是绝对定位层，会盖住文字；把档案信息提到上层并加浅底保证可读 */
+.relic-back .character-card-back {
+  opacity: 0.5;
+  z-index: 0;
+}
+.relic-back .relic-star,
+.relic-back .relic-profile,
+.relic-back h3,
+.relic-back p,
+.relic-back > small {
+  position: relative;
+  z-index: 3;
+}
+.relic-profile {
+  padding: 9px 11px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.76);
+  box-shadow: 0 4px 14px rgba(76, 54, 110, 0.08);
+}
+
+/* 翻面后底部固定有「↶ 翻回人物」提示，给背面内容留出空间，避免和说明文字重叠 */
+.relic-back {
+  padding: 30px 20px 52px !important;
+}
+.relic-back > small {
+  font-size: 9px;
+  line-height: 1.7;
+}
+
+/* 紧凑排版：卡片高度固定（350px），保证四行档案 + 问题 + 信息不溢出 */
+.relic-back {
+  padding: 26px 18px 46px !important;
+  gap: 2px;
+}
+.relic-profile {
+  gap: 3px;
+  padding: 7px 9px;
+  margin: 2px auto 8px;
+}
+.relic-profile dt { font: 9px/1.5 var(--serif); letter-spacing: 0.12em; }
+.relic-profile dd { font-size: 11px; line-height: 1.5; }
+.relic-back h3 {
+  font-size: 14px;
+  line-height: 1.45;
+  margin: 4px 0 6px;
+}
+.relic-back-meta { font-size: 9px; margin: 0 0 3px; }
+.relic-back > small { font-size: 8px; line-height: 1.5; }
+
+/* 最终版排版：去掉白方框，改用「细分隔线 + 右对齐标签 + 左侧数值」 */
+.relic-profile {
+  background: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  padding: 10px 0 0 !important;
+  margin: 4px auto 10px !important;
+  width: min(100%, 190px) !important;
+  border-top: 1px solid rgba(143, 116, 181, 0.22);
+  gap: 4px !important;
+}
+.relic-profile > div {
+  grid-template-columns: 2.4em 1fr !important;
+  gap: 12px !important;
+  align-items: baseline;
+}
+.relic-profile dt {
+  text-align: right;
+  color: #9a8fb5 !important;
+  font: 9px/1.6 var(--serif) !important;
+  letter-spacing: 0.14em !important;
+}
+.relic-profile dd {
+  color: var(--ink) !important;
+  font-size: 12px !important;
+  line-height: 1.6 !important;
+  text-shadow: 0 1px 8px rgba(255, 255, 255, 0.9);
+}
+/* 有立绘时把立绘再压淡一点，文字不需要靠底板也能读 */
+.relic-back.has-character .character-card-back {
+  opacity: 0.34 !important;
+}
+
+/* 正面立绘：收窄显示区域，避免人物与卡名/题眼重叠 */
+.story-specific-portrait {
+  inset: 46px 18px 108px !important;
+  background-position: center bottom !important;
+}
+
+/* 写实立绘：整块铺进拱形卡（不抠图），底部加浅色渐层保证卡名可读 */
+.story-specific-portrait {
+  inset: 0 !important;
+  background-size: cover !important;
+  background-position: center 18% !important;
+  border-radius: 130px 130px 12px 12px;
+}
+.portrait-floor {
+  background: linear-gradient(
+    transparent 42%,
+    rgba(250, 247, 255, 0.72) 62%,
+    rgba(250, 247, 255, 0.94) 78%
+  ) !important;
+}
+
+/* 透明立绘版布局（覆盖之前的整块铺图设置） */
+.story-specific-portrait {
+  inset: 46px 18px 108px !important;
+  background-size: contain !important;
+  background-position: center bottom !important;
+  border-radius: 0 !important;
+}
