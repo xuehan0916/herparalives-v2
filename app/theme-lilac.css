@@ -345,3 +345,40 @@ body {
 .card-bottom .card-play {
   background: rgba(143, 116, 181, 0.08) !important;
 }
+
+/* 反馈 1：背景人物剪影太淡 → 提高存在感与对比（仍保持浅色基调） */
+.vortex-painting {
+  opacity: 0.46 !important;
+  filter: saturate(0.7) brightness(1.12) contrast(1.06) !important;
+}
+.is-distant .vortex-painting {
+  opacity: 0.26 !important;
+}
+.vortex-shade {
+  background:
+    radial-gradient(
+      ellipse at 50% 45%,
+      rgba(255, 255, 255, 0.44) 10%,
+      rgba(247, 244, 251, 0.3) 48%,
+      rgba(236, 228, 248, 0.7) 100%
+    ),
+    linear-gradient(
+      0deg,
+      rgba(247, 244, 251, 0.86),
+      rgba(247, 244, 251, 0.12) 28%,
+      rgba(247, 244, 251, 0.12) 70%,
+      rgba(247, 244, 251, 0.82)
+    ) !important;
+}
+
+/* 反馈 2：故事卡牌在浅底上不够"立起来" → 加深投影与描边 */
+.relic-front,
+.relic-back {
+  border-color: rgba(120, 96, 160, 0.5) !important;
+  box-shadow:
+    0 22px 55px rgba(76, 54, 110, 0.26),
+    0 3px 10px rgba(76, 54, 110, 0.16) !important;
+}
+.hall-card {
+  filter: drop-shadow(0 14px 26px rgba(76, 54, 110, 0.18));
+}
