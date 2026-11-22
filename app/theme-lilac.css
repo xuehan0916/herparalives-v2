@@ -1,0 +1,347 @@
+/* 浅紫高级感主题：覆盖 immersive 的深墨绿 + 金/橄榄配色。
+   只调整配色，不改布局与动效。想回退：从 layout.tsx 移除本文件的引入即可。 */
+
+:root {
+  --paper: #f7f4fb;
+  --surface: #ffffff;
+  --ink: #2b2340;
+  --muted: #6e6484;
+  --line: rgba(92, 70, 128, 0.16);
+  --gold: #8f74b5;
+  --accent: #8f74b5;
+  --accent-soft: #cbb9e2;
+  --shadow-soft: 0 18px 45px rgba(76, 54, 110, 0.12);
+  color-scheme: light;
+}
+
+html,
+body {
+  background:
+    radial-gradient(circle at 78% 6%, #efe6f8 0%, transparent 45%),
+    radial-gradient(circle at 8% 96%, #ece5f7 0%, transparent 42%),
+    var(--paper) !important;
+  color: var(--ink);
+}
+
+/* 背景三层：深绿底 → 浅紫底；插画降为淡纹理；深色遮罩 → 浅紫薄纱 */
+.vortex-scene {
+  background: #f5effb !important;
+}
+.vortex-painting {
+  opacity: 0.3 !important;
+  filter: saturate(0.55) brightness(1.25) contrast(0.95) !important;
+}
+.vortex-shade {
+  background:
+    radial-gradient(
+      ellipse at 50% 45%,
+      rgba(255, 255, 255, 0.62) 10%,
+      rgba(247, 244, 251, 0.4) 48%,
+      rgba(236, 228, 248, 0.78) 100%
+    ),
+    linear-gradient(
+      0deg,
+      rgba(247, 244, 251, 0.94),
+      rgba(247, 244, 251, 0.2) 28%,
+      rgba(247, 244, 251, 0.2) 70%,
+      rgba(247, 244, 251, 0.9)
+    ) !important;
+}
+.vortex-aura {
+  background: #b79ed63d !important;
+}
+.is-distant .vortex-painting {
+  opacity: 0.18 !important;
+}
+.is-distant .vortex-shade {
+  background: linear-gradient(
+    0deg,
+    rgba(247, 244, 251, 0.97),
+    rgba(243, 237, 250, 0.86) 70%,
+    rgba(243, 237, 250, 0.8)
+  ) !important;
+}
+
+/* 卡片上的橄榄色小字 → 紫灰 */
+.relic-serial,
+.relic-theme {
+  color: #8a7fa6 !important;
+}
+.portrait-halo {
+  border-color: rgba(143, 116, 181, 0.28) !important;
+  background: radial-gradient(circle, rgba(183, 158, 214, 0.18), transparent 65%) !important;
+}
+.portrait-halo:after {
+  border-color: rgba(143, 116, 181, 0.2) !important;
+}
+
+/* 主按钮：金色渐变 → 淡紫渐变 */
+.primary {
+  background: linear-gradient(110deg, #8f74b5, #ab92ca 55%, #8168a8) !important;
+  border: 1px solid rgba(120, 96, 160, 0.35) !important;
+  color: #fff !important;
+  box-shadow: 0 10px 26px rgba(96, 72, 138, 0.22) !important;
+  text-shadow: none !important;
+}
+.primary:hover {
+  background: linear-gradient(110deg, #9a80be, #b89ed4 55%, #8b71b2) !important;
+  box-shadow: 0 14px 32px rgba(96, 72, 138, 0.28) !important;
+}
+.primary:disabled {
+  background: #ded4ec !important;
+  color: #7f719a !important;
+  box-shadow: none !important;
+}
+.menu-start {
+  background: linear-gradient(110deg, #8f74b5, #ab92ca 55%, #8168a8) !important;
+  color: #fff !important;
+}
+
+/* 标题与强调文字：暖金/橄榄 → 深紫墨色 */
+.menu-content h1,
+.hall-heading h1,
+.reader h1,
+.my-identity h1,
+.hall-card .cover-title h3 {
+  color: var(--ink) !important;
+  text-shadow: 0 2px 24px rgba(143, 116, 181, 0.18) !important;
+}
+.hall-heading > p:last-child {
+  color: var(--muted) !important;
+}
+.eyebrow {
+  color: var(--accent) !important;
+}
+.muted {
+  color: var(--muted) !important;
+}
+
+/* 选项序号等小强调 */
+.options b {
+  color: var(--accent) !important;
+  border-color: rgba(143, 116, 181, 0.35) !important;
+}
+
+/* 牌背 / 人物牌面：深墨绿 → 浅紫 */
+.relic-back {
+  background: linear-gradient(150deg, #f1eaf9, #ded2ef 60%, #cfc2e6) !important;
+  color: var(--ink) !important;
+}
+.relic-back.has-character:before {
+  background: linear-gradient(transparent, rgba(222, 210, 239, 0.94) 60%) !important;
+}
+.tarot-card-face {
+  background: radial-gradient(ellipse at 50% 20%, #efe7f8, #d8cbea 80%) !important;
+  border-color: rgba(120, 96, 160, 0.3) !important;
+  box-shadow: 0 15px 45px rgba(76, 54, 110, 0.16) !important;
+  color: var(--ink) !important;
+}
+.portrait-floor {
+  filter: drop-shadow(0 4px 8px rgba(76, 54, 110, 0.18)) !important;
+}
+
+/* 卡片与容器：给浅色底一层柔和的紫色阴影，提升"高级感" */
+.hall-card,
+.relic-card,
+.menu-panel {
+  box-shadow: var(--shadow-soft);
+}
+
+/* ── 故事卡牌：深绿 → 浅紫卡面 ── */
+.relic-front,
+.relic-back {
+  background: radial-gradient(ellipse at 50% 35%, #faf7ff 0%, #ece3f8 58%, #ddd0ef 100%) !important;
+  border-color: rgba(143, 116, 181, 0.38) !important;
+  box-shadow: 0 18px 50px rgba(76, 54, 110, 0.16) !important;
+  color: var(--ink) !important;
+}
+.relic-back {
+  background: radial-gradient(ellipse at 50% 10%, #f3ecfb, #ddd0ef 75%) !important;
+}
+.relic-front:after,
+.relic-back:after {
+  border-color: rgba(143, 116, 181, 0.28) !important;
+}
+.relic-back > small,
+.relic-back p,
+.cover-title small,
+.story-card-meta,
+.story-card-meta span {
+  color: #7c7099 !important;
+}
+.relic-back h3,
+.hall-card .cover-title h3 {
+  color: var(--ink) !important;
+}
+.sprite-portrait {
+  filter: drop-shadow(0 4px 10px rgba(76, 54, 110, 0.22)) !important;
+}
+.portrait-floor {
+  background: linear-gradient(transparent, rgba(236, 227, 248, 0.86) 65%, rgba(221, 208, 239, 0.96)) !important;
+}
+.card-play,
+.card-bottom .card-play {
+  color: var(--accent) !important;
+  border-color: rgba(143, 116, 181, 0.4) !important;
+}
+.flip-hint {
+  color: #8a7fa6 !important;
+}
+
+/* ── 首页文案逐条提亮（原为深底上的暖色） ── */
+.menu-content > .eyebrow {
+  color: #8a7fa6 !important;
+}
+.menu-content > .eyebrow span {
+  background: linear-gradient(90deg, transparent, rgba(143, 116, 181, 0.6)) !important;
+}
+.menu-content h1 small {
+  color: #6f6684 !important;
+}
+.menu-subtitle {
+  color: #5f5578 !important;
+  text-shadow: none !important;
+}
+.menu-personal {
+  color: #6f6684 !important;
+}
+.menu-personal > span:first-child,
+.menu-personal > span:last-child {
+  color: var(--accent) !important;
+}
+.menu-personal strong {
+  color: #4a4162 !important;
+}
+.menu-personal small {
+  color: #7c7099 !important;
+}
+.menu-whisper {
+  color: #7d7396 !important;
+}
+
+/* ── 故事馆头部与筛选 ── */
+.hall-heading > p:last-child,
+.hall-subline,
+.hall-note {
+  color: #6f6684 !important;
+}
+.hall-filters button {
+  color: #6f6684 !important;
+}
+.hall-filters button.selected,
+.hall-filters button[class*="active"] {
+  color: var(--accent) !important;
+}
+
+/* ── 全站次级文字：橄榄/暖金 → 紫灰 ── */
+.game-wordmark small,
+.game-location,
+.game-endnote,
+.game-back,
+.motion-toggle,
+.menu-resume,
+.menu-promise,
+.menu-promise span,
+.hall-heading .eyebrow,
+.hall-heading > p:last-child,
+.category-intro p,
+.story-search > span,
+.story-search input::placeholder,
+.source-filters button,
+.hall-categories button,
+.relic-back > small,
+.relic-back p,
+.relic-serial,
+.relic-theme,
+.cover-title small,
+.story-tags span,
+.story-card-meta,
+.hall-draw p,
+.hall-draw small,
+.hall-result-count,
+.hall-empty p,
+.hall-empty > span,
+.notice,
+.situation-grid p,
+.reader-meta,
+.echo,
+.flip-hint {
+  color: #7c7099 !important;
+}
+
+/* ── 强调 / 可点文字：暖金 → 淡紫 ── */
+.game-wordmark,
+.my-entry,
+.menu-start i,
+.menu-personal,
+.hall-categories button:hover,
+.hall-categories button.selected,
+.source-filters button.selected,
+.card-bottom .card-play,
+.card-bottom .card-play:hover,
+.hall-draw .secondary,
+.secondary,
+.relic-star,
+.drawn-label,
+.hall-draw > .draw-sigil {
+  color: var(--accent) !important;
+}
+.hall-categories button.selected:after {
+  color: var(--accent) !important;
+}
+.story-search:focus-within {
+  border-bottom-color: rgba(143, 116, 181, 0.6) !important;
+}
+.story-search input {
+  color: var(--ink) !important;
+}
+.hall-draw .secondary {
+  border-color: rgba(143, 116, 181, 0.38) !important;
+}
+
+/* ── 标题：暖金 → 深紫墨 ── */
+.hall-heading h1,
+.reader h1,
+.reader h3,
+.hall-empty h3 {
+  color: var(--ink) !important;
+}
+
+/* ── 正文字色 ── */
+.prose,
+.reader p {
+  color: #4a4162 !important;
+}
+.echo {
+  border-color: rgba(143, 116, 181, 0.45) !important;
+}
+
+/* ── 阅读页文字 ── */
+.reader .prose,
+.reader p,
+.reader small {
+  color: #4a4162 !important;
+}
+.reader .eyebrow {
+  color: var(--accent) !important;
+}
+.options button {
+  background: rgba(255, 255, 255, 0.78) !important;
+  border-color: rgba(143, 116, 181, 0.28) !important;
+  color: var(--ink) !important;
+}
+.options button:hover {
+  background: #fff !important;
+  border-color: rgba(143, 116, 181, 0.55) !important;
+}
+.options small {
+  color: #7c7099 !important;
+}
+
+/* 选项序号与卡内按钮的底：橄榄 → 淡紫 */
+.options button > span {
+  color: var(--accent) !important;
+}
+.card-bottom .card-play {
+  background: rgba(143, 116, 181, 0.08) !important;
+}
