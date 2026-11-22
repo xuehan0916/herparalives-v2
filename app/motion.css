@@ -1,0 +1,35 @@
+/* 动效开关：让「Ⅱ 动效 / ▷ 动效」真正有可见效果。
+   parallel-refinement.css 曾把背景呼吸动画设为 none，导致开关只影响 canvas 星尘、
+   肉眼几乎看不出差别。这里恢复一层很轻的呼吸，并在暂停时停住全站的动画与过渡。 */
+
+/* 1) 恢复背景插画的缓慢"呼吸"（36s 一个来回，幅度很小） */
+.vortex-painting {
+  animation: painting-breathe 36s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+/* 2) 暂停态：背景插画完全静止（去掉动画，回到原始大小与角度） */
+.motion-paused .vortex-painting {
+  animation: none !important;
+  transform: none !important;
+}
+
+/* 3) 暂停态：main 内所有元素（含伪元素）的动画暂停、过渡立即完成
+      —— 卡片入场、翻牌、悬停位移、滚动渐显等都会停住 */
+.motion-paused *,
+.motion-paused *::before,
+.motion-paused *::after {
+  animation-play-state: paused !important;
+  transition-duration: 0.01ms !important;
+  transition-delay: 0ms !important;
+}
+
+/* 4) 暂停态：场景切换的缩放/模糊过渡也一并停掉 */
+.motion-paused .vortex-scene {
+  transition: none !important;
+}
+
+/* 5) 暂停时不显示颗粒流动感（颗粒本身是静态的，这里只是降低存在感） */
+.motion-paused .film-grain {
+  opacity: 0.02;
+}

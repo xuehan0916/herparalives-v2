@@ -6,6 +6,7 @@ import "./immersive.css";
 import "./parallel-refinement.css";
 import "./tarot-draw.css";
 import "./theme-lilac.css";
+import "./motion.css";
 
 export const metadata: Metadata = {
   title: "HerParaLives 她的平行人生",
